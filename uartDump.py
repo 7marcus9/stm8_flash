@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 import serial
+import sys
 ser = serial.Serial('/dev/ttyUSB0', 500000)
 
 running = True
-fp = open("FLASH", "wb")
+fp = open(sys.argv[1], "wb")
 cnt = 0
 while running:
 	inB = ser.read()

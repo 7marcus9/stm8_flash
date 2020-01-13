@@ -39,6 +39,24 @@ void uartTX(char c)
 	UART1_DR = c;
 }
 
+void stringTx(const char *str)
+{
+	uint8_t i = 0;
+	while(str[i] != 0x00)
+	{
+		uartTX(str[i]);
+		i++;
+	}
+}
+
+void byteBinTx(uint8_t b)
+{
+	for(uint8_t n = 7; n < 8; n--)
+	{
+		uartTX(0x30 + ((b >> n) & 0x01));
+	}
+}
+
 void spi_begin()
 {
 	PA_ODR &= ~(1 << 3);
@@ -50,40 +68,25 @@ void spi_end()
 	PA_ODR |= (1 << 3);
 }
 
-void spi_tx(uint8_t b)
+uint8_t spi_tx(uint8_t b)
 {
 	SPI_DR = b;
 	while( !(SPI_SR & SPI_SR_TXE));
+	while((SPI_SR & (SPI_SR_BSY)));
+	return SPI_DR;
 }
 
 uint8_t spi_rx()
 {
-	spi_tx(0xff);
-	while(!(SPI_SR & SPI_SR_RxNE));
-	return SPI_DR;
+/*	spi_tx(0xff);
+	while(!(SPI_SR & SPI_SR_RxNE)) {}
+	return SPI_DR;*/
+
+	return spi_tx(0xff);
 }
 
-int main(void)
+void dumpFlash()
 {
-	/* Set clock to full speed (16 Mhz) */
-	CLK_CKDIVR = 0;
-	CLK_PCKENR1 = 0xFF;
-	setupOutGPIO();
-	setupSPI();
-	setupUART();
-
-	for(uint16_t n = 0; n < 16000; n++)
-	{
-		nop();
-		nop();
-		nop();
-		nop();
-		nop();
-		nop();
-		nop();
-		nop();
-	}
-
 	while(1) {
 		data[3]++;
 		spi_begin();
@@ -98,8 +101,6 @@ int main(void)
 		spi_tx(0);
 		spi_tx(0);
 		spi_tx(0);
-		while(!(SPI_SR & SPI_SR_RxNE));
-		data[4] = SPI_DR;
 
 		for(uint16_t n = 0; n < 1024; n++)
 		for(uint16_t o = 0; o < 512; o++)
@@ -118,6 +119,112 @@ int main(void)
 		{
 			nop();
 			n = 0;
+		}
+	}
+}
+
+uint8_t p = 0;
+uint8_t printStatus()
+{
+
+	spi_begin();
+	spi_tx(0x05); //RDSR
+//	while(!(SPI_SR & SPI_SR_RxNE)) {}
+	//data[4] = SPI_DR;
+	uint8_t flaStatus = spi_rx();
+	spi_end();
+	
+	stringTx("Status: ");
+	byteBinTx(p++);
+	uartTX('\t');
+	byteBinTx(flaStatus);
+	stringTx("\r\n");
+	return flaStatus;
+}
+
+int main(void)
+{
+	/* Set clock to full speed (16 Mhz) */
+	CLK_CKDIVR = 0;
+	CLK_PCKENR1 = 0xFF;
+	setupOutGPIO();
+	setupSPI();
+	setupUART();
+
+	uint16_t n;
+
+	for(n = 0; n < 16000; n++)
+	{
+		nop();
+		nop();
+		nop();
+		nop();
+		nop();
+		nop();
+		nop();
+		nop();
+	}
+
+	dumpFlash();
+	printStatus();
+
+	spi_begin();
+	spi_tx(0x06); //WREN
+	spi_end();
+
+	nop(); nop(); nop();
+	stringTx("WREN\r\n");
+
+	/*if(printStatus() == 0x02)
+	{
+		stringTx("CHIP ERASE ...");
+		spi_begin();
+		spi_tx(0xC7); //Chip Erase
+		spi_end();
+		stringTx(" SENT\r\n");
+	}*/
+
+	while(1) {
+
+		printStatus();
+		for(n = 0; n < 60000; n++)
+		{
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
+			nop();
 		}
 	}
 }
